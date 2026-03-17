@@ -1,19 +1,8 @@
-// Array que simula um banco de dados em memória.
-// Cada contato vai ser um objeto { id, nome, telefone, email }.
-// Os dados existem enquanto o servidor estiver rodando.
-const contatos = [];
+import pool from '../db/connection.js';
 
-// Contador simples para gerar IDs únicos e crescentes (1, 2, 3...).
-// Num banco de dados real, o próprio banco geraria esse ID automaticamente.
-let proximoId = 1;
-
-// ─── CADASTRAR ────────────────────────────────────────────────────────────────
-// Recebe os dados do corpo (body) da requisição e cria um novo contato.
-export function cadastrarContato(req, res) {
+export async function cadastrarContato(req, res) {
     const { nome, telefone, email } = req.body;
 
-    // Regra de negócio: o contato precisa ter nome e pelo menos uma forma de contato.
-    // Sem isso, a requisição é rejeitada com status 400 (Bad Request).
     if (!nome) {
         return res.status(400).json({ erro: 'O campo nome é obrigatório.' });
     }
@@ -22,51 +11,38 @@ export function cadastrarContato(req, res) {
         return res.status(400).json({ erro: 'Informe ao menos um telefone ou email.' });
     }
 
-    // Monta o objeto do contato com um ID gerado automaticamente.
-    const novoContato = { id: proximoId++, nome, telefone, email };
+    const [resultado] = await pool.execute(
+        'INSERT INTO contatos (nome, telefone, email) VALUES (?, ?, ?)',
+        [nome, telefone ?? null, email ?? null]
+    );
 
-    // Adiciona ao array (equivale a um INSERT no banco).
-    contatos.push(novoContato);
-
-    // Responde com status 201 (Created) e o contato recém-criado.
-    res.status(201).json(novoContato);
+    res.status(201).json({ id: resultado.insertId, nome, telefone, email });
 }
 
-// ─── LISTAR TODOS ─────────────────────────────────────────────────────────────
-// Devolve todos os contatos cadastrados.
-export function listarContatos(req, res) {
+export async function listarContatos(_req, res) {
+    const [contatos] = await pool.execute('SELECT * FROM contatos');
+
     res.json(contatos);
 }
+export async function buscarContato(req, res) {
+    const { id } = req.params;
 
-// ─── BUSCAR UM ────────────────────────────────────────────────────────────────
-// Busca um contato pelo ID que vem na URL (ex: /contatos/2).
-export function buscarContato(req, res) {
-    // req.params.id chega como string; Number() converte para número.
-    const id = Number(req.params.id);
+    const [linhas] = await pool.execute(
+        'SELECT * FROM contatos WHERE id = ?',
+        [id]
+    );
 
-    const contato = contatos.find(c => c.id === id);
-
-    // Se não encontrou, responde 404 (Not Found).
-    if (!contato) {
+    if (linhas.length === 0) {
         return res.status(404).json({ erro: 'Contato não encontrado.' });
     }
 
-    res.json(contato);
+    res.json(linhas[0]);
 }
 
-// ─── ATUALIZAR ────────────────────────────────────────────────────────────────
-// Substitui os dados de um contato existente com os novos dados do body.
-export function atualizarContato(req, res) {
-    const id = Number(req.params.id);
-    const indice = contatos.findIndex(c => c.id === id);
-
-    if (indice === -1) {
-        return res.status(404).json({ erro: 'Contato não encontrado.' });
-    }
-
+export async function atualizarContato(req, res) {
+    const { id } = req.params;
     const { nome, telefone, email } = req.body;
 
-    // Mesma validação do cadastro: nome e pelo menos uma forma de contato.
     if (!nome) {
         return res.status(400).json({ erro: 'O campo nome é obrigatório.' });
     }
@@ -75,25 +51,29 @@ export function atualizarContato(req, res) {
         return res.status(400).json({ erro: 'Informe ao menos um telefone ou email.' });
     }
 
-    // Mantém o ID original e atualiza os demais campos.
-    contatos[indice] = { id, nome, telefone, email };
+    const [resultado] = await pool.execute(
+        'UPDATE contatos SET nome = ?, telefone = ?, email = ? WHERE id = ?',
+        [nome, telefone ?? null, email ?? null, id]
+    );
 
-    res.json(contatos[indice]);
-}
-
-// ─── EXCLUIR ──────────────────────────────────────────────────────────────────
-// Remove o contato do array pelo ID.
-export function excluirContato(req, res) {
-    const id = Number(req.params.id);
-    const indice = contatos.findIndex(c => c.id === id);
-
-    if (indice === -1) {
+    if (resultado.affectedRows === 0) {
         return res.status(404).json({ erro: 'Contato não encontrado.' });
     }
 
-    // splice(indice, 1) remove exatamente 1 elemento na posição encontrada.
-    contatos.splice(indice, 1);
+    res.json({ id: Number(id), nome, telefone, email });
+}
 
-    // 204 (No Content): operação bem-sucedida, sem corpo na resposta.
+export async function excluirContato(req, res) {
+    const { id } = req.params;
+
+    const [resultado] = await pool.execute(
+        'DELETE FROM contatos WHERE id = ?',
+        [id]
+    );
+
+    if (resultado.affectedRows === 0) {
+        return res.status(404).json({ erro: 'Contato não encontrado.' });
+    }
+
     res.status(204).send();
 }
