@@ -6,16 +6,17 @@ import {
     atualizarContato,
     excluirContato,
 } from './contatosController.js';
+import { autenticar } from '../auth/authMiddleware.js';
 
 const router = Router();
 
-router.post('/', cadastrarContato);
+router.get('/', autenticar, listarContatos);
 
-router.get('/', listarContatos);
+router.get('/:id', autenticar, buscarContato);
 
-router.get('/:id', buscarContato);
+router.post('/', autenticar, cadastrarContato);
 
-router.put('/:id', atualizarContato);
+router.put('/:id', autenticar, atualizarContato);
 
 router.delete('/:id', excluirContato);
 
