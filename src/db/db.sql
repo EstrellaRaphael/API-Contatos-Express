@@ -15,3 +15,5 @@ CREATE TABLE IF NOT EXISTS usuarios (
     email    VARCHAR(100)  NOT NULL UNIQUE,
     senha    VARCHAR(255)  NOT NULL
 );
+
+ALTER TABLE usuarios ADD COLUMN papel ENUM('admin', 'usuario') NOT NULL DEFAULT 'usuario';

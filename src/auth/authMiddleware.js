@@ -19,3 +19,10 @@ export function autenticar(req, res, next) {
         return res.status(401).json({ erro: 'Token inválido ou expirado.' });
     }
 }
+
+export function autorizarAdmin(req, res, next) {
+    if (req.usuario.papel !== 'admin') {
+        return res.status(403).json({ erro: 'Acesso restrito a administradores.' });
+    }
+    next();
+}

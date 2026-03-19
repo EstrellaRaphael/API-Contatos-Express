@@ -6,7 +6,7 @@ import {
     atualizarContato,
     excluirContato,
 } from './contatosController.js';
-import { autenticar } from '../auth/authMiddleware.js';
+import { autenticar, autorizarAdmin } from '../auth/authMiddleware.js';
 
 const router = Router();
 
@@ -18,6 +18,6 @@ router.post('/', autenticar, cadastrarContato);
 
 router.put('/:id', autenticar, atualizarContato);
 
-router.delete('/:id', excluirContato);
+router.delete('/:id', autenticar, autorizarAdmin, excluirContato);
 
 export default router;
